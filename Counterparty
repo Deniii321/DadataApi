@@ -1,0 +1,168 @@
+<html>
+<head>
+  <title>Dadata API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    li {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+
+    li:first-child {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+
+    .error-message {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="form-group">
+      <label for="inn-input">Введите наименование, КПП или ИНН организации:</label>
+      <input type="text" id="inn-input" name="inn-input">
+      <span class="error-message" id="error-message"></span>
+    </div>
+    <button id="search-btn">Найти контрагентов</button>
+    <ul id="data-list"></ul>
+  </div>
+
+  <script>
+    // Replace YOUR_API_KEY with your actual API key
+    const API_KEY = 'd1cdebeaab70ceb842885466b72ce7bb49de5b72';
+    const URL_ORG = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party';
+    const URL_CONTR = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party';
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Token d1cdebeaab70ceb842885466b72ce7bb49de5b72`
+    });
+
+    const searchBtn = document.getElementById('search-btn');
+    searchBtn.addEventListener('click', () => {
+      const innInput = document.getElementById('inn-input').value.trim();
+      const errorMessage = document.getElementById('error-message');
+      if (!innInput) {
+        errorMessage.textContent = 'Введите наименование организации';
+        return;
+      }
+
+      let requestDataOrg = {};
+      requestDataOrg = {
+        query: innInput,
+        count: 1
+      };
+
+      fetch(URL_ORG, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(requestDataOrg)
+      })
+        .then(response => response.json())
+        .then(dataOrg => {
+          const dataList = document.getElementById('data-list');
+          dataList.innerHTML = '';
+
+          // Добавляем данные об организации
+          const li1 = document.createElement('li');
+          li1.textContent = `Организация: ${dataOrg.suggestions[0].value}, ИНН: ${dataOrg.suggestions[0].data.inn || '-'}, КПП: ${dataOrg.suggestions[0].data.kpp || '-'}, Адрес: ${dataOrg.suggestions[0].data.address.value}`;
+          dataList.appendChild(li1);
+
+          const inn = dataOrg.suggestions[0].data.inn;
+          const kpp = dataOrg.suggestions[0].data.kpp;
+
+          let requestDataContr = {};
+          if (kpp) {
+            requestDataContr = {
+              query: kpp,
+              count: 20
+            };
+          } else {
+            requestDataContr = {
+              query: dataOrg.suggestions[0].value,
+              count: 20
+            };
+          }
+
+          fetch(URL_CONTR, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestDataContr)
+          })
+            .then(response => response.json())
+            .then(dataContr => {
+              dataContr.suggestions.forEach(item => {
+                const li2 = document.createElement('li');
+                li2.textContent = item.value;
+                dataList.appendChild(li2);
+              });
+            });
+        })
+        .catch(err => {
+          console.error(err);
+          const dataList = document.getElementById('data-list');
+          dataList.innerHTML = '';
+          // Обновляем UI с сообщением об ошибке
+          const liErr = document.createElement('li');
+          liErr.textContent = 'Произошла ошибка при получении данных';
+          dataList.appendChild(liErr);
+        });
+    });
+  </script>
+</body>
+</html>
